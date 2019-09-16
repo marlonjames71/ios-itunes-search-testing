@@ -47,6 +47,36 @@ class SearchResultsControllerTests: XCTestCase {
 	func testSearchResultForGoodData() {
 		// URLSession dependency is locking us into async / delayed logic
 
-		
+		let mock = MockDataLoader()
+		mock.data = goodData
+		let controller = SearchResultController(dataLoader: mock)
+		let completionExpectation = expectation(description: "Async completion")
+
+		controller.performSearch(for: "GarageBand", resultType: .software) {
+			completionExpectation.fulfill()
+		}
+
+		waitForExpectations(timeout: 5)
+		XCTAssertEqual(2, controller.searchResults.count)
+		XCTAssertEqual("GarageBand", controller.searchResults[0].title)
+		XCTAssertEqual("Apple", controller.searchResults[0].artist)
+	}
+
+	func testSearchResultForBadJSONData() {
+		// URLSession dependency is locking us into async / delayed logic
+
+		let mock = MockDataLoader()
+		mock.data = badJSONData
+		let controller = SearchResultController(dataLoader: mock)
+		let completionExpectation = expectation(description: "Async completion")
+
+		controller.performSearch(for: "GarageBand", resultType: .software) { _ in
+			completionExpectation.fulfill()
+		}
+
+		waitForExpectations(timeout: 5)
+		XCTAssertEqual(0, controller.searchResults.count)
+
+
 	}
 }

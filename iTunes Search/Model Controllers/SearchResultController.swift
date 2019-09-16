@@ -8,13 +8,19 @@
 
 import Foundation
 
+enum SearchError: Error { //, Equatable {
+	case noData
+	case urlSessionError // (Error)
+	case decodeError // (Error)
+}
+
 class SearchResultController {
 	// https://itunes.apple.com/search?entity=software&term=garageband
 	let baseURL = URL(string: "https://itunes.apple.com/search")!
 	var searchResults: [SearchResult] = []
 	let dataLoader: NetworkDataLoader
 
-	init(dataLoader: NetworkDataLoader = URLSession.shared) {
+	init(dataLoader: NetworkDataLoader = URLSession.shared) { // <- initializer dependency injection
 		self.dataLoader = dataLoader
 	}
 
@@ -37,8 +43,9 @@ class SearchResultController {
 	- Is our completion handler is always called?
 	- Feature: provide
 	*/
+
     
-    func performSearch(for searchTerm: String, resultType: ResultType, completion: @escaping () -> Void) {
+    func performSearch(for searchTerm: String, resultType: ResultType, completion: @escaping (Result<[SearchResult], SearchError>) -> Void) {
         
         var urlComponents = URLComponents(url: baseURL, resolvingAgainstBaseURL: true)
         let parameters = ["term": searchTerm,
@@ -55,18 +62,26 @@ class SearchResultController {
         
 		dataLoader.loadData(with: request) { (data, error) in
             
-            if let error = error { NSLog("Error fetching data: \(error)") }
-            guard let data = data else { completion(); return }
+            if let error = error {
+				NSLog("Error fetching data: \(error)")
+				completion(.failure(.urlSessionError)) //(error))) // TODO: Test!
+				return
+			}
+
+            guard let data = data else {
+				completion(.failure(.noData)) // TODO: Test!
+				return
+			}
             
             do {
                 let jsonDecoder = JSONDecoder()
-                let searchResults = try jsonDecoder.decode(SearchResults.self, from: data)
-                self.searchResults = searchResults.results
+                let result = try jsonDecoder.decode(SearchResults.self, from: data)
+                self.searchResults = result.results
+				completion(.success(self.searchResults))
             } catch {
                 print("Unable to decode data into object of type [SearchResult]: \(error)")
+				completion(.failure(.decodeError)) //(error)))
             }
-            
-            completion()
         }
     }
 }
